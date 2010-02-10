@@ -1,5 +1,13 @@
 <?php
 
+$wgExtensionCredits['other'][] = array(
+	'name' => "ACL",
+	'description' => "Provides fine grained per-page, per-namespace, and per-category access control lists based on usernames and groups.",
+	'version' => "1.0",
+	'author' => "Andy Cobaugh (phalenor@bx.psu.edu)",
+	'url' => "http://github.com/phalenor/mw-acl"
+);
+
 /* 
  * Some definitions
  * entity: a user or group
@@ -10,35 +18,37 @@
 /* tag used on pages to define acls */
 $wgACLTag = 'acl';
 
+/*
+ * the code assumes there could be duplicate
+ * delimiters in series by accident
+ */
+
+/* used to delimit entity->right objects */
+$wgACLDelimeter = ',';
+
+/* used to delimit entities from rights */
+$wgACLEntityBitDelimiter = ' '; 
+
 /* this defines acl inheritance, ie 'foo' also implies 'bar' */
 $wgACLRightInheritance = array(
-	'r' => array('h',	'w'),
-	'h' => array('r',	'w'),
-	'w' => array('r',	'h'),
-	'e' => array('r',	'h', 'w', 'p'),
-	'p' => array('r',	'w', 'e', 'h',	'p'),
-	'd' => array('r',	'e', 'h', 'm', 'p', 'w'),
-	'm' => array('r',	'e', 'h', 'm',	'w', 'p'),
+	'r' => array('h', 'w'),
+	'h' => array('r', 'w'),
+	'w' => array('r', 'h'),
+	'e' => array('r', 'h', 'w', 'p'),
+	'p' => array('r', 'w', 'e', 'h',	'p'),
+	'd' => array('r', 'e', 'h', 'm', 'p', 'w'),
+	'm' => array('r', 'e', 'h', 'm',	'w', 'p'),
 	'a' => array('r', 'e', 'h', 'd', 'm', 'p', 'w')
 );
 
+/* which rights are implied if none are specified */
+$wgACLImplicitBits = 're';
+
 /* these are all the bits that we will interpret */
-$wgACLAllowedBits = array(
-	'r', 'e', 'm', 'h', 'd', 'p', 'w', 'a'
-);
+$wgACLAllowedBits = array_keys($wgACLRightInheritance);
 
 /* same as above, but the negative bits */
-$wgACLAllowedNegativeBits = array(
-	'R', 'E', 'M', 'H', 'D', 'P', 'W', 'A'
-);
-
-$wgExtensionCredits['other'][] = array(
-	'name' => "ACL",
-	'description' => "Provides fine grained per-page access control lists based on usernames and groups.",
-	'version' => "1.0",
-	'author' => "Andy Cobaugh (phalenor@bx.psu.edu)",
-	'url' => "http://bx.psu.edu/"
-);
+$wgACLAllowedNegativeBits = array_keys(array_change_key_case($wgACLRightInheritance));
 
 /* push ourselves onto the extension function stack */
 $wgExtensionFunctions[] = 'efACLParserSetup';
@@ -132,7 +142,7 @@ function efACLHookuserCan(&$title, &$user, $action, &$result)
  * This returns both positive and negative acls, and takes into account empty bit fields
  */
 function efACLExtractACL($title) {
-	global $wgACLtag, $wgACLAllowedBits, $wgACLAllowedNegativeBits, $wgACLimplicitBits;
+	global $wgACLTag, $wgACLAllowedBits, $wgACLAllowedNegativeBits, $wgACLImplicitBits, $wgACLDelimeter, $wgACLEntityBitDelimiter;
 	
 	$article = new Article($title, 0);
 	$content = $article->getContent();
@@ -141,17 +151,18 @@ function efACLExtractACL($title) {
 	$acl = array();
 
 	/* scan $content for <acl>(.*)</acl> */
-	if (preg_match_all("/<acl>(.*)<\/acl>/", $content, $acl_tag_matches, PREG_SET_ORDER)) {
+#	$match_string = "/<$wgACLTag>(.*
+	if (preg_match_all("/<$wgACLTag>(.*)<\/$wgACLTag>/", $content, $acl_tag_matches, PREG_SET_ORDER)) {
 		/* combine all <acl> tag matches into one string, separated by commas */
 		foreach ($acl_tag_matches as $match) {
 			$acl_string .= $match[1] . $wgACLdelim;
 		}
 		/* process each entry */
-		foreach (split($wgACLdelim, $acl_string) as $entry) {
+		foreach (split($wgACLDelimeter, $acl_string) as $entry) {
 			if (!empty($entry)) {
 				/* split this acl string entry to $entity and $bits */
-				if (strpos($entry, $wgACLentryDelim)) {
-					list($entity, $bits) = split($wgACLentryDelim, $entry);
+				if (strpos($entry, $wgACLEntityBitDelimiter)) {
+					list($entity, $bits) = split($wgACLEntityBitDelimiter, $entry);
 				} else {
 					$entity = $entry;
 					$bits = "";
@@ -160,31 +171,25 @@ function efACLExtractACL($title) {
 				$entity = trim($entity);
 				$bits = trim($bits);
 				
-				/* not specifying any bits  */
+				/* not specifying any bits implies all bits */
 				if (!isset($bits)) {
-					$bits = $wgACLimplicitBits;
+					$bits = $wgACLImplicitBits;
 				}
 
 				/* put only the allowed bits into $acl[$entity] */	
-				$bits_array = str_split($bits);
-				foreach ($bits_array as $bit) {
-					if (!empty($bit) 
-						&& ( (in_array($bit, $wgACLAllowedBits) || in_array($bit_flag, $wgACLAllowedNegativeBits)) )) 
-					{
+				foreach (str_split($bits)) {
+					if (!empty($bit) && (in_array($bit, $wgACLAllowedBits) || in_array($bit, $wgACLAllowedNegativeBits))) {
 						$acl[$entity][] = $bit;
 					}
 				}
 				/* handle the case where we only specified negative acls, and need to 
 				 * include $wgACLimplicitBits
 				 */
-				foreach ($acl as $entity => $bits)
-				{
-					if (count(array_intersect($bits, $wgACLAllowedBits)) == 0)
-					{
-						$acl[$entity][] .= $wgACLimplicitBits;
+				foreach ($acl as $entity => $bits) {
+					if (count(array_intersect($bits, $wgACLAllowedBits)) == 0) {
+						$acl[$entity][] .= str_split($wgACLImplicitBits);
 					}
 				}
-
 			} /* end if */
 		} /* end foreach */
 	} /* end preg_match_all */
@@ -196,36 +201,28 @@ function efACLExtractACL($title) {
 }
 
 /* collapse duplicate bits */
-function efACLDeDuplicateBits($acl)
-{
-		foreach ($acl as $entity => $bits)
-		{
+function efACLDeDuplicateBits($acl) {
+		foreach ($acl as $entity => $bits) {
 			$acl[$entity] = array_unique($bits);
 		}
-
 		return $acl;
 }
 
 /* expand based on inheritance */
-function efACLInheritance($acl)
-{
+function efACLInheritance($acl) {
 	global $wgACLAllowedBits, $wgACLRightInheritance;
 
-	foreach ($acl as $entity => $bits)
-	{
-		if (count($bits) > 0)
-		{
-			foreach ($bits as $bit)
-			{
-				if (in_array($bit, $wgACLAllowedBits))
-				{
-					$return_acl[$entity] = array_merge($return_acl[$entity], $wgACLRightInheritance[$bit]);
-				}
+	$retun_acl = array();
+
+	foreach ($acl as $entity => $bits) {
+		if (count($bits) > 0) {
+			foreach ($bits as $bit)	{
+				$return_acl[$entity] = array_merge($return_acl[$entity], $wgACLRightInheritance[$bit]);
 			}
 		}
 	}
 
-	return $acl;
+	return $return_acl;
 }
 
 /* subtract negative bits */
@@ -233,28 +230,34 @@ function efACLNegativeACL($acl)
 {
 	global $wgACLAllowedNegativeBits;
 
+	/* loop over each entity->bit */
 	foreach ($acl as $entity => $bits)
 	{
+		/* find the negative bits */
 		$negative_bits = array_intersect($bits, $wgACLAllowedNegativeBits);
-		$positive_bits = array_diff($access, $wgACLAllowedNegativeBits);
+		/* find the positive bits */
+		$positive_bits = array_diff($bits, $wgACLAllowedNegativeBits);
+
+		/* loop over each negative bit */
 		foreach ($negative_bits as $negative_bit)
 		{
+			/* remove strtolower($negative_bit) from $positive_bits */
 			$negative_bit = strtolower($negative_bit);
-			$negative_bit_array = array("$negative_bit");
-			$acl[$entity] = array_diff($positive_bits, $negative_bit_array);
+			$acl[$entity] = array_diff($positive_bits, array($negative_bit));
 		}
 	}
 
 	return $acl;
 }
 
-/* just combines some functions to get the effective acl
- * for a particular title
+/* 
+ * just combines some functions to get the effective acl
+ * for a particular $title
  */
 
 function efACLEffectiveACL($title)
 {
-	//$acl = efACLExtractACL($title);
+	$acl = efACLExtractACL($title);
 	$acl = efACLInheritance($acl);
 	$acl = efACLNegativeACL($acl);
 	$acl = efACLDeDuplicate($acl);
@@ -262,40 +265,11 @@ function efACLEffectiveACL($title)
 	return $acl;
 }
 
-/* return effective acls with entity-level precedence
- * any entities that exist in $lower that don't exist in 
- * $higher are passed through.
+/* 
+ * find the final acls for $title 
+ * based on category, namespace, and page acls
  */
-function efACLPrecedence ($higher, $lower)
-{
-	foreach ($lower as $key => $value)
-	{
-		$higher[$key] = $value;
-	}
-
-	return $lower;
-}
-
-/* return effective acls by adding */
-function efACLAdd($one, $two)
-{
-	$return_acl = array();
-
-	foreach ($one as $key => $value)
-	{
-		$return_acl[$key][] = $value;
-	}
-	
-	foreach ($two as $key => $value)
-	{
-		$return_acl[$key][] = $value;
-	}
-
-	$return_acl = efACLDeDuplicate($return_acl);
-	return $return_acl;
-}
-
-function efACLCumulativeRights($title)
+function efACLCumulative($title)
 {
 	$category_rights = array();
 
@@ -319,19 +293,14 @@ function efACLCumulativeRights($title)
 }
 
 /* this will recursively flatten a tree of categories returned by getParentCategoryTree() */
-function efACLFlattenCategoryTree($category_tree)
-{
+function efACLFlattenCategoryTree($category_tree) {
 	$keys = array();
 
-	foreach($category_tree as $k => $v)
-	{
+	foreach($category_tree as $k => $v)	{
 		$keys[] = $k;
-		if (is_array($category_tree[$k]) && (count($category_tree[$k]) > 0))
-		{
+		if (is_array($category_tree[$k]) && (count($category_tree[$k]) > 0))	{
 			$keys = array_merge($keys, efACLFlattenCategoryTree($category_tree[$k]));
-		}
-		else
-		{
+		} else {
 			return array($k);
 		}
 	}
