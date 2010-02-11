@@ -24,7 +24,7 @@ $wgACLTag = 'acl';
  */
 
 /* used to delimit entity->right objects */
-$wgACLDelimeter = ',';
+$wgACLDelimiter = ',';
 
 /* NS:$wgACLNamespaceACLPage will hold acls for NS */
 $wgACLNamespaceACLPage = 'ACL';
@@ -145,7 +145,7 @@ function efACLHookuserCan(&$title, &$user, $action, &$result)
  * This returns both positive and negative acls, and takes into account empty bit fields
  */
 function efACLExtractACL($title) {
-	global $wgACLTag, $wgACLAllowedBits, $wgACLAllowedNegativeBits, $wgACLImplicitBits, $wgACLDelimeter, $wgACLEntityBitDelimiter;
+	global $wgACLTag, $wgACLAllowedBits, $wgACLAllowedNegativeBits, $wgACLImplicitBits, $wgACLDelimiter, $wgACLEntityBitDelimiter;
 	
 	$article = new Article($title, 0);
 	$content = $article->getContent();
@@ -158,10 +158,10 @@ function efACLExtractACL($title) {
 	if (preg_match_all("/<$wgACLTag>(.*)<\/$wgACLTag>/", $content, $acl_tag_matches, PREG_SET_ORDER)) {
 		/* combine all <acl> tag matches into one string, separated by commas */
 		foreach ($acl_tag_matches as $match) {
-			$acl_string .= $match[1] . $wgACLdelim;
+			$acl_string .= $match[1] . $wgACLDelimiter;
 		}
 		/* process each entry */
-		foreach (split($wgACLDelimeter, $acl_string) as $entry) {
+		foreach (split($wgACLDelimiter, $acl_string) as $entry) {
 			if (!empty($entry)) {
 				/* split this acl string entry to $entity and $bits */
 				if (strpos($entry, $wgACLEntityBitDelimiter)) {
@@ -215,14 +215,18 @@ function efACLDeDuplicateBits($acl) {
 function efACLInheritance($acl) {
 	global $wgACLAllowedBits, $wgACLRightInheritance;
 
-	$retun_acl = array();
+	$return_acl = array();
 
 	foreach ($acl as $entity => $bits) {
 		if (count($bits) > 0) {
 			foreach ($bits as $bit)	{
+				if (!is_array($return_acl[$entity])) {
+					$return_acl[$entity] = array();
+				}
 				$return_acl[$entity] = array_merge($return_acl[$entity], $wgACLRightInheritance[$bit]);
 			}
 		}
+		$return_acl[$entity] = array_merge($return_acl[$entity], $bits);
 	}
 
 	return $return_acl;
@@ -259,7 +263,7 @@ function efACLTitleACL($title)
 	$acl = efACLExtractACL($title);
 	$acl = efACLInheritance($acl);
 //	$acl = efACLNegativeACL($acl);
-	$acl = efACLDeDuplicate($acl);
+	$acl = efACLDeDuplicateBits($acl);
 
 	return $acl;
 }
@@ -322,7 +326,7 @@ function efACLAddACL($acl1, $acl2) {
 		}
 		$acl2[$entity] = array_merge($acl2[$entity], $bits);
 	}
-	return efACLDeDuplicateACL($acl2);
+	return efACLDeDuplicateBits($acl2);
 }
 
 /* this will recursively flatten a tree of categories returned by getParentCategoryTree() */
