@@ -26,6 +26,9 @@ $wgACLTag = 'acl';
 /* used to delimit entity->right objects */
 $wgACLDelimeter = ',';
 
+/* NS:$wgACLNamespaceACLPage will hold acls for NS */
+$wgACLNamespaceACLPage = 'ACL';
+
 /* used to delimit entities from rights */
 $wgACLEntityBitDelimiter = ' '; 
 
@@ -127,7 +130,7 @@ function efACLHookuserCan(&$title, &$user, $action, &$result)
 	return true;
 }
 
-/* returns an array of entity=>bits for $article
+/* returns an array of entity=>bits for $title
  * Array
  * (
  * 	['entity'] => Array
@@ -177,7 +180,7 @@ function efACLExtractACL($title) {
 				}
 
 				/* put only the allowed bits into $acl[$entity] */	
-				foreach (str_split($bits)) {
+				foreach (str_split($bits) as $bit) {
 					if (!empty($bit) && (in_array($bit, $wgACLAllowedBits) || in_array($bit, $wgACLAllowedNegativeBits))) {
 						$acl[$entity][] = $bit;
 					}
@@ -226,27 +229,23 @@ function efACLInheritance($acl) {
 }
 
 /* subtract negative bits */
-function efACLNegativeACL($acl)
-{
+function efACLNegativeACL($acl) {
 	global $wgACLAllowedNegativeBits;
 
 	/* loop over each entity->bit */
-	foreach ($acl as $entity => $bits)
-	{
+	foreach ($acl as $entity => $bits) {
 		/* find the negative bits */
 		$negative_bits = array_intersect($bits, $wgACLAllowedNegativeBits);
 		/* find the positive bits */
 		$positive_bits = array_diff($bits, $wgACLAllowedNegativeBits);
 
 		/* loop over each negative bit */
-		foreach ($negative_bits as $negative_bit)
-		{
+		foreach ($negative_bits as $negative_bit) {
 			/* remove strtolower($negative_bit) from $positive_bits */
 			$negative_bit = strtolower($negative_bit);
 			$acl[$entity] = array_diff($positive_bits, array($negative_bit));
 		}
 	}
-
 	return $acl;
 }
 
@@ -255,11 +254,11 @@ function efACLNegativeACL($acl)
  * for a particular $title
  */
 
-function efACLEffectiveACL($title)
+function efACLTitleACL($title)
 {
 	$acl = efACLExtractACL($title);
 	$acl = efACLInheritance($acl);
-	$acl = efACLNegativeACL($acl);
+//	$acl = efACLNegativeACL($acl);
 	$acl = efACLDeDuplicate($acl);
 
 	return $acl;
@@ -269,27 +268,61 @@ function efACLEffectiveACL($title)
  * find the final acls for $title 
  * based on category, namespace, and page acls
  */
-function efACLCumulative($title)
+function efACLCumulativeACL($title)
 {
-	$category_rights = array();
+	$acl = array();
 
-	$page_rights = efACLExtractRights($title);
-	
+	$title_acl = efACLTitleACL($title);
+	$category_acl = efACLCategoryACL($title);
+	$ns_acl = efACLNamespaceACL($title);
+
+	/* hard-coded order in which we combine acls */
+
+}
+
+/* 
+ * returns cumulative acls from the categories of $title
+ */
+function efACLCategoryACL($title) {
+	$category_acl = array();
+
 	$category_tree = $title->getParentCategoryTree();
-	if (count($category_tree) > 0)
-	{
+	
+	if (count($category_tree) > 0) {
 		$category_tree_flat = efACLFlattenCategoryTree($category_tree);
-		foreach ($category_tree_flat as $category)
-		{
+		foreach ($category_tree_flat as $category) {
 			$category_title = Title::newFromText($category);
-			$category_rights = efACLRightsAdditive($category_rights, efACLExtractRights($category_title));
+			$category_acl = efACLAddACL($category_acl, efACLTitleACL($category_title));
 		}
-		$page_rights = efACLRightsPrecedence($page_rights, $category_rights);
 	}
+	return $category_acl;
+}
 
-	$page_rights = efACLEffectiveRights($page_rights);
+/* 
+ * return ACL for the NS that $title is in
+ */
+function efACLNamespaceACL($title) {
+	global $wgACLNamespaceACLPage;
 
-	return $page_rights;
+	$ns = $title->getNsText();
+	if ($ns) {
+		$ns_acl_title = Title::newFromText("$ns:$wgACLNamespaceACLPage");
+		return efACLTitleACL($ns_acl_title);
+	} else {
+		return array();
+	}
+}
+
+
+/* adds acls together, with deduplication */
+function efACLAddACL($acl1, $acl2) {
+	foreach ($acl1 as $entity => $bits) {
+		if (!is_array($acl2[$entity])) {
+			$acl2[$entity] = array();
+		}
+		$acl2[$entity] = array_merge($acl2[$entity], $bits);
+	}
+	return efACLDeDuplicateACL($acl2);
 }
 
 /* this will recursively flatten a tree of categories returned by getParentCategoryTree() */
