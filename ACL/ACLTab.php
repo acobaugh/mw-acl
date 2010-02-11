@@ -36,41 +36,27 @@ function efACLDisplayTab($action, &$wgArticle)
 {
 	global $wgOut, $wgUser;
 
-	if ($action == 'acl')
-	{
-		$content = $wgArticle->getContent();
-		$title = $wgArticle->getTitle();
+	if ($action == 'acl') {
 		$username = strtolower($wgUser->getName());
+		$title = $wgArticle->getTitle();
+		$ns = $title->getNamespace();
 
 		$groups = $wgUser->getEffectiveGroups();
 		$groups_pretty = print_r($groups, true);
 
-		$acl = efACLExtractACL($title);
-		$acl = efACLEffectiveACL($acl);
-		$acl_pretty = print_r($acl, true);
+		$page_acl = print_r(efACLTitleACL($title), true);
+		$category_acl = print_r(efACLCategoryACL($title), true);
+		$ns_acl = print_r(efACLNamespaceACL($title), true);
 
 		$text = "* Username: $username\n";
 		$text .= "* Groups:\n";
-		$text .= "<pre>$groups_pretty</pre>";
-		$text .= "* Rights from this page:\n";
-		$text .="<pre>$acl_pretty</pre>\n";
-
-		$category_tree = $title->getParentCategoryTree();
-		$category_tree_flat = efACLFlattenCategoryTree($category_tree);
-
-		foreach ($category_tree_flat as $category)
-		{
-			$text .="* Rights from [[:$category]]\n";
-			
-			$mytitle = Title::newFromText($category);
-			$myarticle = new Article($mytitle, 0);
-			$myacl = efACLExtractACL($mytitle);
-			$myacl = efACLEffectiveACL($myacl);
-			$acl_pretty = print_r($myacl, true);
-
-			$text .="<pre>$acl_pretty</pre>\n";
-		}
-
+		$text .= "<pre>$groups_pretty</pre>\n";
+		$text .= "* ACLs from this page:\n";
+		$text .="<pre>$page_acl</pre>\n";
+		$text .="* ACLs from categories:\n";
+		$text .="<pre>$category_acl</pre>\n";
+		$text .="* ACLs from namespace $ns :\n";
+		$text .="<pre>$ns_acl</pre>\n";
 		$wgOut->addWikiText($text);
 	}
 
