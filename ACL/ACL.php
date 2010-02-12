@@ -164,8 +164,9 @@ function efACLExtractACL($title) {
 		foreach (split($wgACLDelimiter, $acl_string) as $entry) {
 			if (!empty($entry)) {
 				/* split this acl string entry to $entity and $bits */
-				if (strpos($entry, $wgACLEntityBitDelimiter)) {
-					list($entity, $bits) = split($wgACLEntityBitDelimiter, $entry);
+				if (strpos(trim($entry), $wgACLEntityBitDelimiter)) {
+					$entry = eregi_replace("$wgACLEntityBitDelimiter+", "$wgACLEntityBitDelimiter", $entry);
+					list($entity, $bits) = split($wgACLEntityBitDelimiter, trim($entry));
 				} else {
 					$entity = $entry;
 					$bits = "";
