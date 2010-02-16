@@ -335,11 +335,9 @@ function efACLFlattenCategoryTree($category_tree) {
 	$keys = array();
 
 	foreach($category_tree as $k => $v)	{
-		$keys[] = $k;
+		array_push($keys, $k);
 		if (is_array($category_tree[$k]) && (count($category_tree[$k]) > 0))	{
 			$keys = array_merge($keys, efACLFlattenCategoryTree($category_tree[$k]));
-		} else {
-			return array($k);
 		}
 	}
 	return $keys;
