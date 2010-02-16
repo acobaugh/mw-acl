@@ -54,10 +54,9 @@ function efACLDisplayTab($action, &$wgArticle)
 
 		$text = "== User ==\n";
 		$text .= "* Username: $username\n";
-		$text .= "* Groups:\n";
-		$text .="<pre>";
+		$text .= "* Groups: ";
 		$text .= implode(', ', $groups);
-		$text .="</pre>\n";
+		$text .= "\n";
 
 		$text .= "== Page ACLs ==\n";
 		$text .= "ACLs from this page:\n";
