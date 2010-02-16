@@ -1,5 +1,9 @@
 <?php
 
+if (!defined( 'MEDIAWIKI' )) {
+	die('This file is a MediaWiki extension, it is not a valid entry point');
+}
+
 $wgExtensionFunctions[] = 'efACLContentTabSetup';
 
 /* add hooks, general setup */
@@ -72,11 +76,11 @@ function efACLDisplayTab($action, &$wgArticle)
 		$text .= efACLWikiTextACL($page_acl, 1);
 
 		$text .= "== Namespace ACLs ==\n";
-		$text .="ACLs from namespace $ns :\n";
+		$text .="ACLs from namespace $ns :\n\n";
 		$text .= efACLWikiTextACL($ns_acl, 1);
 
 		$text .= "== Category ACLs ==\n";
-		$text .="Total ACLs from all categories:\n";
+		$text .="Total ACLs from all categories:\n\n";
 		$text .= efACLWikiTextACL($category_acl, 1);
 		
 		$category_tree = $title->getParentCategoryTree();

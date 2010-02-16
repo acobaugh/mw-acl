@@ -1,5 +1,9 @@
 <?php
 
+if (!defined( 'MEDIAWIKI' )) {
+	die('This file is a MediaWiki extension, it is not a valid entry point');
+}
+
 $wgExtensionCredits['other'][] = array(
 	'name' => "ACL",
 	'description' => "Provides fine grained per-page, per-namespace, and per-category access control lists based on usernames and groups.",
