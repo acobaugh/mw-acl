@@ -50,7 +50,7 @@ function efACLDisplayTab($action, &$wgArticle)
 
 		$page_acl = efACLTitleACL($title);
 		$category_acl = efACLCategoryACL($title);
-		$ns_acl = print_r(efACLNamespaceACL($title), true);
+		$ns_acl = efACLNamespaceACL($title);
 
 		$text = "== User ==\n";
 		$text .= "* Username: $username\n";
