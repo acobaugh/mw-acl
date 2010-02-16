@@ -44,6 +44,7 @@ function efACLDisplayTab($action, &$wgArticle)
 		
 		$username = strtolower($wgUser->getName());
 		$title = $wgArticle->getTitle();
+		$ns_text = $title->getNsText();
 		$ns = $title->getNamespace();
 		$titleText = $title->getEscapedText();
 
@@ -76,7 +77,10 @@ function efACLDisplayTab($action, &$wgArticle)
 		$text .= efACLWikiTextACL($page_acl, 1);
 
 		$text .= "== Namespace ACLs ==\n";
-		$text .="ACLs from namespace $ns :\n\n";
+		if ($ns == NS_MAIN) {
+			$ns_text = 'Main';
+		}
+		$text .="ACLs from namespace '''$ns_text''' :\n\n";
 		$text .= efACLWikiTextACL($ns_acl, 1);
 
 		$text .= "== Category ACLs ==\n";
