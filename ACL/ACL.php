@@ -44,6 +44,17 @@ $wgACLRightInheritance = array(
 	'a' => array('r', 'e', 'h', 'd', 'm', 'p', 'w')
 );
 
+$wgACLNames = array(
+	'r' => 'read',
+	'h' => 'history',
+	'w' => 'watch',
+	'e' => 'edit',
+	'p' => 'protect',
+	'd' => 'delete',
+	'm' => 'move',
+	'a' => 'all / administer'
+);
+
 /* which rights are implied if none are specified */
 $wgACLImplicitBits = 're';
 
@@ -51,7 +62,7 @@ $wgACLImplicitBits = 're';
 $wgACLAllowedBits = array_keys($wgACLRightInheritance);
 
 /* same as above, but the negative bits */
-$wgACLAllowedNegativeBits = array_keys(array_change_key_case($wgACLRightInheritance));
+$wgACLAllowedNegativeBits = array_keys(array_change_key_case($wgACLRightInheritance, CASE_UPPER));
 
 /* push ourselves onto the extension function stack */
 $wgExtensionFunctions[] = 'efACLParserSetup';
@@ -96,7 +107,7 @@ function efACLHookuserCan(&$title, &$user, $action, &$result)
 {
 	#$page_rights = efACLCumulativeRights($title);
 
-	$username = strtolower($user->mName);
+	#$username = strtolower($user->mName);
 
 	switch ($action)
 	{
@@ -206,10 +217,12 @@ function efACLExtractACL($title) {
 
 /* collapse duplicate bits */
 function efACLDeDuplicateBits($acl) {
-		foreach ($acl as $entity => $bits) {
+	foreach ($acl as $entity => $bits) {
+		if (is_array($bits)) {
 			$acl[$entity] = array_unique($bits);
 		}
-		return $acl;
+	}
+	return $acl;
 }
 
 /* expand based on inheritance */
@@ -221,10 +234,12 @@ function efACLInheritance($acl) {
 	foreach ($acl as $entity => $bits) {
 		if (count($bits) > 0) {
 			foreach ($bits as $bit)	{
-				if (!is_array($return_acl[$entity])) {
+				if (!array_key_exists($entity, $return_acl)) {
 					$return_acl[$entity] = array();
 				}
-				$return_acl[$entity] = array_merge($return_acl[$entity], $wgACLRightInheritance[$bit]);
+				if (array_key_exists($bit, $wgACLRightInheritance)) {
+					$return_acl[$entity] = array_merge($return_acl[$entity], $wgACLRightInheritance[$bit]);
+				}
 			}
 		}
 		$return_acl[$entity] = array_merge($return_acl[$entity], $bits);
@@ -239,16 +254,18 @@ function efACLNegativeACL($acl) {
 
 	/* loop over each entity->bit */
 	foreach ($acl as $entity => $bits) {
-		/* find the negative bits */
-		$negative_bits = array_intersect($bits, $wgACLAllowedNegativeBits);
-		/* find the positive bits */
-		$positive_bits = array_diff($bits, $wgACLAllowedNegativeBits);
+		if (is_array($bits)) {
+			/* find the negative bits */
+			$negative_bits = array_intersect($bits, $wgACLAllowedNegativeBits);
+			/* find the positive bits */
+			$positive_bits = array_diff($bits, $wgACLAllowedNegativeBits);
 
-		/* loop over each negative bit */
-		foreach ($negative_bits as $negative_bit) {
-			/* remove strtolower($negative_bit) from $positive_bits */
-			$negative_bit = strtolower($negative_bit);
-			$acl[$entity] = array_diff($positive_bits, array($negative_bit));
+			/* loop over each negative bit */
+			foreach ($negative_bits as $negative_bit) {
+				/* remove strtolower($negative_bit) from $positive_bits */
+				$negative_bit = strtolower($negative_bit);
+				$acl[$entity] = array_diff($positive_bits, array($negative_bit));
+			}
 		}
 	}
 	return $acl;
@@ -282,6 +299,11 @@ function efACLCumulativeACL($title)
 	$ns_acl = efACLNamespaceACL($title);
 
 	/* hard-coded order in which we combine acls */
+	$acl = efACLNegativeACL($category_acl);
+	$acl = efACLNegativeACL(efACLAddACL($acl, $ns_acl));
+	$acl = efACLNegativeACL(efACLAddACL($acl, $title_acl));
+
+	return $acl;
 
 }
 
@@ -322,10 +344,12 @@ function efACLNamespaceACL($title) {
 /* adds acls together, with deduplication */
 function efACLAddACL($acl1, $acl2) {
 	foreach ($acl1 as $entity => $bits) {
-		if (!is_array($acl2[$entity])) {
-			$acl2[$entity] = array();
+		if (array_key_exists($entity, $acl2)) {
+			if (!is_array($acl2[$entity])) {
+				$acl2[$entity] = array();
+			}
+			$acl2[$entity] = array_merge($acl2[$entity], $bits);
 		}
-		$acl2[$entity] = array_merge($acl2[$entity], $bits);
 	}
 	return efACLDeDuplicateBits($acl2);
 }
