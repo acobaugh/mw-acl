@@ -37,30 +37,61 @@ function efACLDisplayTab($action, &$wgArticle)
 	global $wgOut, $wgUser;
 
 	if ($action == 'acl') {
+		
 		$username = strtolower($wgUser->getName());
 		$title = $wgArticle->getTitle();
 		$ns = $title->getNamespace();
+		$titleText = $title->getEscapedText();
+
+		$wgOut->setPageTitle("ACLs for $titleText");
 
 		$groups = $wgUser->getEffectiveGroups();
-		$groups_pretty = print_r($groups, true);
+		sort($groups);
 
-		$page_acl = print_r(efACLTitleACL($title), true);
-		$category_acl = print_r(efACLCategoryACL($title), true);
+		$page_acl = efACLTitleACL($title);
+		$category_acl = efACLCategoryACL($title);
 		$ns_acl = print_r(efACLNamespaceACL($title), true);
 
-		$text = "* Username: $username\n";
+		$text = "== User ==\n";
+		$text .= "* Username: $username\n";
 		$text .= "* Groups:\n";
-		$text .= "<pre>$groups_pretty</pre>\n";
-		$text .= "* ACLs from this page:\n";
-		$text .="<pre>$page_acl</pre>\n";
-		$text .="* ACLs from categories:\n";
-		$text .="<pre>$category_acl</pre>\n";
-		$text .="* ACLs from namespace $ns :\n";
-		$text .="<pre>$ns_acl</pre>\n";
+		$text .="<pre>";
+		$text .= implode(', ', $groups);
+		$text .="</pre>\n";
+
+		$text .= "== Page ACLs ==\n";
+		$text .= "ACLs from this page:\n";
+		$text .= efACLWikiTextACL($page_acl, 1);
+
+		$text .= "== Namespace ACLs ==\n";
+		$text .="ACLs from namespace $ns :\n";
+		$text .= efACLWikiTextACL($ns_acl, 1);
+
+		$text .= "== Category ACLs ==\n";
+		$text .="ACLs from categories:\n";
+		$text .= efACLWikiTextACL($category_acl, 1);
+		
 		$wgOut->addWikiText($text);
 	}
 
 	return false;
 }
 
+function efACLWikiTextACL($acl, $indent) {
+	$text = '';
+	$prefix = '';
+
+	if ($indent > 0) {
+		for ($i = 0; $i < $indent; $i++) {
+			$prefix .= '*';
+		}
+	}
+
+	foreach ($acl as $entity => $value) {
+		$text .= $prefix . $entity  . ' : ' . implode($value) . "\n";
+	}
+	
+	return $text;
+}
+		
 ?>
