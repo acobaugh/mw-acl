@@ -109,38 +109,123 @@ function efACLHookAlternateEdit(&$editpage)
 /* control any other access */
 function efACLHookuserCan(&$title, &$user, $action, &$result)
 {
-	#$page_rights = efACLCumulativeRights($title);
+	$acl = efACLCumulativeACL($title);
+	$effective_acl[0] = array();
 
-	#$username = strtolower($user->mName);
+	/* returning true means other userCan hooks can still make decisions
+	 * if there are no acls at all for this page, allow the rest of 
+	 * the system to decide whether to allow or deny 
+	 */
+	if (count($acl) < 0) {
+		return true;
+	}
+	$username = strtolower($user->getName());
+	$groups = $user->getEffectiveGroups();
+	
+	/* add up acls for every group this user is a member of */
+	foreach ($groups as $group) {
+		if (in_array($group, array_keys($acl))) {
+			$effective_acl[0] = array_merge($effective_acl[0], $acl[$group]);
+		}
+	}
+	/* de-duplicate and apply negative acls */
+	efACLNegativeACL(efACLDeDuplicateBits($effective_acl));
 
-	switch ($action)
-	{
-	case 'read':
-		break;
-	case 'edit':
-		//stuff
-		break;
-	case 'move':
-		//stuff
-		break;
-	case 'history':
-		//stuff
-		break;
-	case 'delete':
-		//stuff
-		break;
-	case 'move':
-		//stuff
-		break;
-	case 'protect':
-		//stuff
-		break;
-	case 'watch':
-		//stuff
-		break;
-	case 'acl':
-		//stuff
-		break;
+	/* now apply user-specific acls */
+	if (in_array($username, array_keys($acl))) {
+		$effective_acl = array_merge($effective_acl[0], $acl[$username]);
+		efACLNegativeACL(efACLDeDuplicateBits($effective_acl));
+	}
+	
+
+	/* if user has no bits to this page */
+	if (count($effective_acl[0]) == 0) {
+		$return = false;
+		return false;
+	}
+	
+	switch ($action) {
+		case 'read':
+			if (in_array('r', $effective_acl[0])) {
+				$return = true;
+			} else {
+				$return = false;
+			}
+			return false;
+			break;
+		case 'edit':
+			if (in_array('e', $effective_acl[0])) {
+				$return = true;
+			} else {
+				$return = false;
+			}
+			return false;
+			break;
+		case 'move':
+			if (in_array('m', $effective_acl[0])) {
+				$return = true;
+			} else {
+				$return = false;
+			}
+			return false;
+			//stuff
+			break;
+		case 'history':
+			if (in_array('h', $effective_acl[0])) {
+				$return = true;
+			} else {
+				$return = false;
+			}
+			return false;
+			//stuff
+			break;
+		case 'delete':
+			if (in_array('d', $effective_acl[0])) {
+				$return = true;
+			} else {
+				$return = false;
+			}
+			return false;
+			//stuff
+			break;
+		case 'move':
+			if (in_array('m', $effective_acl[0])) {
+				$return = true;
+			} else {
+				$return = false;
+			}
+			return false;
+			//stuff
+			break;
+		case 'protect':
+			if (in_array('p', $effective_acl[0])) {
+				$return = true;
+			} else {
+				$return = false;
+			}
+			return false;
+			//stuff
+			break;
+		case 'watch':
+			if (in_array('w', $effective_acl[0])) {
+				$return = true;
+			} else {
+				$return = false;
+			}
+			return false;
+			//stuff
+			break;
+		case 'acl':
+			if (in_array('r', $effective_acl[0])) {
+				$return = true;
+			} else {
+				$return = false;
+			}
+			return false;
+			break;
+		default:
+			$return = false;
+			return false;
 	}
 	return true;
 }
@@ -305,7 +390,7 @@ function efACLCumulativeACL($title)
 	/* hard-coded order in which we combine acls */
 	$acl = efACLNegativeACL($category_acl);
 	$acl = efACLNegativeACL(efACLAddACL($acl, $ns_acl));
-	$acl = efACLNegativeACL(efACLAddACL($acl, $title_acl));
+	$acl = efACLAddACL($acl, $title_acl);
 
 	return $acl;
 
