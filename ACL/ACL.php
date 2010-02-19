@@ -22,11 +22,13 @@ $wgExtensionCredits['other'][] = array(
 /* tag used on pages to define acls */
 $wgACLTag = 'acl';
 
+/* are we the final decision makers if there are ACLs present ? */
+$wgACLStrict = true;
+
 /*
  * the code assumes there could be duplicate
  * delimiters in series by accident
  */
-
 /* used to delimit entity->right objects */
 $wgACLDelimiter = ',';
 
@@ -87,8 +89,7 @@ include_once('ACLTab.php');
 /* sets up the extension 
  * hooks in our parser hook for $wgACLTag
  */
-function efACLParserSetup()
-{
+function efACLParserSetup() {
 	global $wgParser, $wgACLTag;
 
 	/* hook us into the parser if $wgACLTag is present */
@@ -98,21 +99,21 @@ function efACLParserSetup()
 /* hook to be called when $wgParser is set up
  * also disables the cache
  */
-function efACLParserHook($input, $args, &$parser)
-{
+function efACLParserHook($input, $args, &$parser) {
 	$parser->disableCache();
 	// do stuff
 }
 
 /* control edit access. used sometimes in place of userCan */
-function efACLHookAlternateEdit(&$editpage)
-{
+function efACLHookAlternateEdit(&$editpage) {
 //	return true;
 }
 
 /* control any other access */
 function efACLHookuserCan(&$title, &$user, $action, &$result)
 {
+	global $wgACLStrict;
+
 	$acl = efACLCumulativeACL($title);
 	$effective_acl[0] = array();
 
@@ -213,10 +214,17 @@ function efACLHookuserCan(&$title, &$user, $action, &$result)
 			}
 			break;
 		default:
+			/* tried to perform an action we don't know about
+			 * disallow, but allow other module to process
+			 */
 			$result = false;
-			return false;
+			return true;
 	}
-	return false;
+	if ($wgACLStrict) {
+		return false;
+	} else {
+		return true;
+	}
 }
 
 /* returns an array of entity=>bits for $title
@@ -354,8 +362,7 @@ function efACLNegativeACL($acl) {
  * for a particular $title
  */
 
-function efACLTitleACL($title)
-{
+function efACLTitleACL($title) {
 	$acl = efACLExtractACL($title);
 	$acl = efACLInheritance($acl);
 //	$acl = efACLNegativeACL($acl);
@@ -368,8 +375,7 @@ function efACLTitleACL($title)
  * find the final acls for $title 
  * based on category, namespace, and page acls
  */
-function efACLCumulativeACL($title)
-{
+function efACLCumulativeACL($title) {
 	$acl = array();
 
 	$title_acl = efACLTitleACL($title);
