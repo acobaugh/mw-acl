@@ -45,9 +45,13 @@ $wgACLRightInheritance = array(
 	'p' => array('r', 'w', 'e', 'h',	'p'),
 	'd' => array('r', 'e', 'h', 'm', 'p', 'w'),
 	'm' => array('r', 'e', 'h', 'm',	'w', 'p'),
-	'a' => array('r', 'e', 'h', 'd', 'm', 'p', 'w')
+	'a' => array('r', 'e', 'h', 'd', 'm', 'p', 'w'),
+	'A' => array('R', 'E', 'H', 'D', 'M', 'P', 'W')
 );
 
+/* descriptive names for each bit, to be displayed as a key
+ * on the acl tab
+ */
 $wgACLNames = array(
 	'r' => 'read',
 	'h' => 'history',
@@ -72,7 +76,7 @@ $wgACLAllowedNegativeBits = array_keys(array_change_key_case($wgACLRightInherita
 $wgExtensionFunctions[] = 'efACLParserSetup';
 
 /* control edit access */
-$wgHooks['AlternateEdit'][] = 'efACLHookAlternateEdit';
+//$wgHooks['AlternateEdit'][] = 'efACLHookAlternateEdit';
 
 /* control any other access */
 $wgHooks['userCan'][] = 'efACLHookuserCan';
@@ -103,7 +107,7 @@ function efACLParserHook($input, $args, &$parser)
 /* control edit access. used sometimes in place of userCan */
 function efACLHookAlternateEdit(&$editpage)
 {
-	return true;
+//	return true;
 }
 
 /* control any other access */
@@ -116,12 +120,12 @@ function efACLHookuserCan(&$title, &$user, $action, &$result)
 	 * if there are no acls at all for this page, allow the rest of 
 	 * the system to decide whether to allow or deny 
 	 */
-	if (count($acl) < 0) {
+	if (count($acl) == 0) {
 		return true;
 	}
 	$username = strtolower($user->getName());
 	$groups = $user->getEffectiveGroups();
-	
+
 	/* add up acls for every group this user is a member of */
 	foreach ($groups as $group) {
 		if (in_array($group, array_keys($acl))) {
@@ -129,105 +133,90 @@ function efACLHookuserCan(&$title, &$user, $action, &$result)
 		}
 	}
 	/* de-duplicate and apply negative acls */
-	efACLNegativeACL(efACLDeDuplicateBits($effective_acl));
+	$effective_acl = efACLNegativeACL(efACLDeDuplicateBits($effective_acl));
 
 	/* now apply user-specific acls */
 	if (in_array($username, array_keys($acl))) {
-		$effective_acl = array_merge($effective_acl[0], $acl[$username]);
-		efACLNegativeACL(efACLDeDuplicateBits($effective_acl));
+		$effective_acl[0] = array_merge($effective_acl[0], $acl[$username]);
+		$effective_acl = efACLNegativeACL(efACLDeDuplicateBits($effective_acl));
 	}
-	
 
 	/* if user has no bits to this page */
 	if (count($effective_acl[0]) == 0) {
-		$return = false;
+		$result = false;
 		return false;
 	}
-	
+
+	/* there must be a better way to do this */	
 	switch ($action) {
 		case 'read':
 			if (in_array('r', $effective_acl[0])) {
-				$return = true;
+				$result = true;
 			} else {
-				$return = false;
+				$result = false;
 			}
-			return false;
 			break;
 		case 'edit':
 			if (in_array('e', $effective_acl[0])) {
-				$return = true;
+				$result = true;
 			} else {
-				$return = false;
+				$result = false;
 			}
-			return false;
 			break;
 		case 'move':
 			if (in_array('m', $effective_acl[0])) {
-				$return = true;
+				$result = true;
 			} else {
-				$return = false;
+				$result = false;
 			}
-			return false;
-			//stuff
 			break;
 		case 'history':
 			if (in_array('h', $effective_acl[0])) {
-				$return = true;
+				$result = true;
 			} else {
-				$return = false;
+				$result = false;
 			}
-			return false;
-			//stuff
 			break;
 		case 'delete':
 			if (in_array('d', $effective_acl[0])) {
-				$return = true;
+				$result = true;
 			} else {
-				$return = false;
+				$result = false;
 			}
-			return false;
-			//stuff
 			break;
 		case 'move':
 			if (in_array('m', $effective_acl[0])) {
-				$return = true;
+				$result = true;
 			} else {
-				$return = false;
+				$result = false;
 			}
-			return false;
-			//stuff
 			break;
 		case 'protect':
 			if (in_array('p', $effective_acl[0])) {
-				$return = true;
+				$result = true;
 			} else {
-				$return = false;
+				$result = false;
 			}
-			return false;
-			//stuff
 			break;
 		case 'watch':
 			if (in_array('w', $effective_acl[0])) {
-				$return = true;
+				$result = true;
 			} else {
-				$return = false;
+				$result = false;
 			}
-			return false;
-			//stuff
 			break;
-		case 'acl':
+		case 'acl': // this is just to view acls, not set them
 			if (in_array('r', $effective_acl[0])) {
-				$return = true;
+				$result = true;
 			} else {
-				$return = false;
+				$result = false;
 			}
-			return false;
 			break;
 		default:
-			$return = false;
+			$result = false;
 			return false;
 	}
-	return true;
+	return false;
 }
 
 /* returns an array of entity=>bits for $title
@@ -351,9 +340,9 @@ function efACLNegativeACL($acl) {
 
 			/* loop over each negative bit */
 			foreach ($negative_bits as $negative_bit) {
-				/* remove strtolower($negative_bit) from $positive_bits */
-				$negative_bit = strtolower($negative_bit);
-				$acl[$entity] = array_diff($positive_bits, array($negative_bit));
+				/* remove both the positive and negative bit */
+				$acl[$entity] = array_diff($acl[$entity], array($negative_bit));
+				$acl[$entity] = array_diff($acl[$entity], array(strtolower($negative_bit)));
 			}
 		}
 	}
