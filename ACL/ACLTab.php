@@ -38,7 +38,7 @@ function efACLHookContentTab(&$content_actions)
 /* display the tab */
 function efACLDisplayTab($action, &$wgArticle)
 {
-	global $wgOut, $wgUser, $wgACLNames;
+	global $wgOut, $wgUser, $wgACLNames, $wgACLNamespaceACLPage;
 
 	if ($action == 'acl') {
 		
@@ -79,8 +79,11 @@ function efACLDisplayTab($action, &$wgArticle)
 		$text .= "== Namespace ACLs ==\n";
 		if ($ns == NS_MAIN) {
 			$ns_text = 'Main';
+			$ns_acl_page = $wgACLNamespaceACLPage;
+		} else {
+			$ns_acl_page = $ns_text . ':' . $wgACLNamespaceACLPage;
 		}
-		$text .="ACLs from namespace '''$ns_text''' :\n\n";
+		$text .="ACLs from namespace '''$ns_text''' ([[$ns_acl_page]]) :\n\n";
 		$text .= efACLWikiTextACL($ns_acl, 1);
 
 		$text .= "== Category ACLs ==\n";
@@ -92,7 +95,7 @@ function efACLDisplayTab($action, &$wgArticle)
 			$category_tree_flat = efACLFlattenCategoryTree($category_tree);
 			foreach ($category_tree_flat as $category) {
 				$category_title = Title::newFromText($category);
-				$text .= "=== $category ===\n";
+				$text .= "=== [[:$category]] ===\n";
 				$text .= efACLWikiTextACL(efACLTitleACL($category_title));
 			}
 		}
