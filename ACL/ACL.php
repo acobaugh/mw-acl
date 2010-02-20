@@ -25,6 +25,8 @@ $wgACLTag = 'acl';
 /* are we the final decision makers if there are ACLs present ? */
 $wgACLStrict = true;
 
+/* users/groups that always have full acls */
+$wgACLAdmins = array('Bureaucrats');
 /*
  * the code assumes there could be duplicate
  * delimiters in series by accident
@@ -112,10 +114,11 @@ function efACLHookAlternateEdit(&$editpage) {
 /* control any other access */
 function efACLHookuserCan(&$title, &$user, $action, &$result)
 {
-	global $wgACLStrict;
+	global $wgACLStrict, $wgACLAdmins;
 
 	$acl = efACLCumulativeACL($title);
 	$effective_acl[0] = array();
+
 
 	/* returning true means other userCan hooks can still make decisions
 	 * if there are no acls at all for this page, allow the rest of 
@@ -126,6 +129,12 @@ function efACLHookuserCan(&$title, &$user, $action, &$result)
 	}
 	$username = strtolower($user->getName());
 	$groups = $user->getEffectiveGroups();
+
+	/* allow anyone in $wgACLAdmins */
+	if (count(array_intersect($groups, $wgACLAdmins)) > 0 || in_array($username, $wgACLAdmins)) {
+		$result = true;
+		return false;
+	}
 
 	/* add up acls for every group this user is a member of */
 	foreach ($groups as $group) {
@@ -388,7 +397,6 @@ function efACLCumulativeACL($title) {
 	$acl = efACLAddACL($acl, $title_acl);
 
 	return $acl;
-
 }
 
 /* 
@@ -415,13 +423,15 @@ function efACLCategoryACL($title) {
 function efACLNamespaceACL($title) {
 	global $wgACLNamespaceACLPage;
 
-	$ns = $title->getNsText();
-	if ($ns) {
-		$ns_acl_title = Title::newFromText("$ns:$wgACLNamespaceACLPage");
-		return efACLTitleACL($ns_acl_title);
+	$ns_text = $title->getNsText();
+	$ns = $title->getNamespace();
+	if ($ns == NS_MAIN) {
+		$page = $wgACLNamespaceACLPage;
 	} else {
-		return array();
+		$page = "$ns_text:$wgACLNamespaceACLPage";
 	}
+	$ns_acl_title = Title::newFromText($page);
+	return efACLTitleACL($ns_acl_title);
 }
 
 
@@ -433,6 +443,8 @@ function efACLAddACL($acl1, $acl2) {
 				$acl2[$entity] = array();
 			}
 			$acl2[$entity] = array_merge($acl2[$entity], $bits);
+		} else {
+			$acl2[$entity] = $bits;
 		}
 	}
 	return efACLDeDuplicateBits($acl2);
