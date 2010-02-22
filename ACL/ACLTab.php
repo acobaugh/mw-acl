@@ -73,7 +73,7 @@ function efACLDisplayTab($action, &$wgArticle)
 		$text .= "== Effective ACLs ==\n";
 		$text .= efACLWikiTextACL(efACLCumulativeACL($title), 1);
 		$text .= "== Page ACLs ==\n";
-		$text .= "ACLs from this page:\n";
+		$text .= "ACLs from this page:\n\n";
 		$text .= efACLWikiTextACL($page_acl, 1);
 
 		$text .= "== Namespace ACLs ==\n";
@@ -118,7 +118,12 @@ function efACLWikiTextACL($acl, $indent = 0) {
 		}
 
 		foreach ($acl as $entity => $value) {
-			$text .= $prefix . $entity  . ' : ' . implode($value) . "\n";
+			if (count($value) == 0) {
+				$value = "(none)";
+			} else {
+				$value = implode($value);
+			}
+			$text .= $prefix . ' ' . $entity  . ' : ' . $value . "\n";
 		}
 	} else {
 		$text .= $prefix . "(none)\n";
