@@ -143,7 +143,7 @@ function efACLHookuserCan(&$title, &$user, $action, &$result)
 		}
 	}
 	/* de-duplicate and apply negative acls */
-	$effective_acl = efACLNegativeACL(efACLDeDuplicateBits($effective_acl));
+	$effective_acl = efACLDeDuplicateBits($effective_acl);
 
 	/* now apply user-specific acls */
 	if (in_array($username, array_keys($acl))) {
@@ -394,7 +394,7 @@ function efACLCumulativeACL($title) {
 	/* hard-coded order in which we combine acls */
 	$acl = efACLNegativeACL($category_acl);
 	$acl = efACLNegativeACL(efACLAddACL($acl, $ns_acl));
-	$acl = efACLAddACL($acl, $title_acl);
+	$acl = efACLNegativeACL(efACLAddACL($acl, $title_acl));
 
 	return $acl;
 }
