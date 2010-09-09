@@ -118,6 +118,9 @@ function efACLWikiTextACL($acl, $indent = 0) {
 		}
 
 		foreach ($acl as $entity => $value) {
+			if ($entity == '*') {
+				$entity = '&#42;';
+			}
 			if (count($value) == 0) {
 				$value = "(none)";
 			} else {
