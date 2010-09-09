@@ -74,7 +74,7 @@ $wgACLImplicitBits = 're';
 $wgACLAllowedBits = array('r', 'h', 'w', 'e', 'p', 'd', 'm', 'a');
 
 /* same as above, but the negative bits */
-$wgACLAllowedNegativeBits = array_keys(array_change_key_case($wgACLAllowedBits, CASE_UPPER));
+$wgACLAllowedNegativeBits = array('R', 'H', 'W', 'E', 'P', 'D', 'M', 'A');
 
 /* push ourselves onto the extension function stack */
 $wgExtensionFunctions[] = 'efACLParserSetup';
