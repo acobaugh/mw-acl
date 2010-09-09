@@ -349,7 +349,6 @@ function efACLNegativeACL($acl) {
 
 			/* loop over each negative bit */
 			foreach ($negative_bits as $negative_bit) {
-				echo "<pre>removing $negative_bit for $entity</pre>";
 				/* remove both the positive and negative bit */
 				$acl[$entity] = array_diff($acl[$entity], array($negative_bit));
 				$acl[$entity] = array_diff($acl[$entity], array(strtolower($negative_bit)));
