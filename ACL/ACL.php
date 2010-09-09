@@ -272,32 +272,25 @@ function efACLExtractACL($title) {
 				/* split this acl string entry to $entity and $bits */
 				if (strpos(trim($entry), $wgACLEntityBitDelimiter)) {
 					$entry = eregi_replace("$wgACLEntityBitDelimiter+", "$wgACLEntityBitDelimiter", $entry);
-					list($entity, $bits) = split($wgACLEntityBitDelimiter, trim($entry));
+					list($entity, $bitstring) = split($wgACLEntityBitDelimiter, trim($entry));
 				} else {
+					/* if no bits were supplied */
 					$entity = $entry;
-					$bits = "";
+					$bitstring = $wgACLImplicitBits;
 				}
 				/* trim excess whitespace */
 				$entity = trim($entity);
-				$bits = trim($bits);
+				$bitstring = trim($bitstring);
 				
-				/* not specifying any bits implies all bits */
-				if (!isset($bits)) {
-					$bits = $wgACLImplicitBits;
+				/* if $acl[$entity] was not previously defined, define it now */
+				if (!is_array($acl[$entity])) {
+					$acl[$entity] = array();
 				}
 
 				/* put only the allowed bits into $acl[$entity] */	
-				foreach (str_split($bits) as $bit) {
+				foreach (str_split($bitstring) as $bit) {
 					if (!empty($bit) && (in_array($bit, $wgACLAllowedBits) || in_array($bit, $wgACLAllowedNegativeBits))) {
 						$acl[$entity][] = $bit;
-					}
-				}
-				/* handle the case where we only specified negative acls, and need to 
-				 * include $wgACLimplicitBits
-				 */
-				foreach ($acl as $entity => $bits) {
-					if (count(array_intersect($bits, $wgACLAllowedBits)) == 0) {
-						$acl[$entity][] .= str_split($wgACLImplicitBits);
 					}
 				}
 			} /* end if */
@@ -322,22 +315,21 @@ function efACLDeDuplicateBits($acl) {
 
 /* expand based on inheritance */
 function efACLInheritance($acl) {
-	global $wgACLAllowedBits, $wgACLRightInheritance;
+	global $wgACLRightInheritance;
 
 	$return_acl = array();
 
 	foreach ($acl as $entity => $bits) {
+		/* copy existing entry */
+		$return_acl[$entity] = $acl[$entity];
 		if (count($bits) > 0) {
 			foreach ($bits as $bit)	{
-				if (!array_key_exists($entity, $return_acl)) {
-					$return_acl[$entity] = array();
-				}
 				if (array_key_exists($bit, $wgACLRightInheritance)) {
+					/* merge $return_acl[$entity] with the bits inherited from $bit */
 					$return_acl[$entity] = array_merge($return_acl[$entity], $wgACLRightInheritance[$bit]);
 				}
 			}
 		}
-		$return_acl[$entity] = array_merge($return_acl[$entity], $bits);
 	}
 
 	return $return_acl;
@@ -357,6 +349,7 @@ function efACLNegativeACL($acl) {
 
 			/* loop over each negative bit */
 			foreach ($negative_bits as $negative_bit) {
+				echo "<pre>removing $negative_bit for $entity</pre>";
 				/* remove both the positive and negative bit */
 				$acl[$entity] = array_diff($acl[$entity], array($negative_bit));
 				$acl[$entity] = array_diff($acl[$entity], array(strtolower($negative_bit)));
