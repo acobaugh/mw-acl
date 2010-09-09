@@ -46,9 +46,9 @@ $wgACLRightInheritance = array(
 	'h' => array('r', 'w'),
 	'w' => array('r', 'h'),
 	'e' => array('r', 'h', 'w', 'p'),
-	'p' => array('r', 'w', 'e', 'h',	'p'),
+	'p' => array('r', 'w', 'e', 'h', 'p'),
 	'd' => array('r', 'e', 'h', 'm', 'p', 'w'),
-	'm' => array('r', 'e', 'h', 'm',	'w', 'p'),
+	'm' => array('r', 'e', 'h', 'm', 'w', 'p'),
 	'a' => array('r', 'e', 'h', 'd', 'm', 'p', 'w'),
 	'A' => array('R', 'E', 'H', 'D', 'M', 'P', 'W')
 );
@@ -71,10 +71,10 @@ $wgACLNames = array(
 $wgACLImplicitBits = 're';
 
 /* these are all the bits that we will interpret */
-$wgACLAllowedBits = array_keys($wgACLRightInheritance);
+$wgACLAllowedBits = array('r', 'h', 'w', 'e', 'p', 'd', 'm', 'a');
 
 /* same as above, but the negative bits */
-$wgACLAllowedNegativeBits = array_keys(array_change_key_case($wgACLRightInheritance, CASE_UPPER));
+$wgACLAllowedNegativeBits = array_keys(array_change_key_case($wgACLAllowedBits, CASE_UPPER));
 
 /* push ourselves onto the extension function stack */
 $wgExtensionFunctions[] = 'efACLParserSetup';
