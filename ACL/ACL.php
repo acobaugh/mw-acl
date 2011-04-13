@@ -283,7 +283,7 @@ function efACLExtractACL($title) {
 				$bitstring = trim($bitstring);
 				
 				/* if $acl[$entity] was not previously defined, define it now */
-				if (!is_array($acl[$entity])) {
+				if (!array_key_exists($entity, $acl) or !is_array($acl[$entity])) {
 					$acl[$entity] = array();
 				}
 
