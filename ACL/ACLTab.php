@@ -13,18 +13,21 @@ function efACLContentTabSetup()
 
 	$wgMessageCache->addMessage('acl', 'acl');
 
-	$wgHooks['SkinTemplateContentActions'][] = 'efACLHookContentTab';
+	/* pre 1.16 skins use this: */
+	//$wgHooks['SkinTemplateContentActions'][] = 'efACLHookContentTab';
+
+	/* >1.16 skins such as 'vector', and all skins >1.18 use this: */
+	$wgHooks['SkinTemplateNavigation'][] = 'efACLHookNavigationTab';
+
 	$wgHooks['UnknownAction'][] = 'efACLDisplayTab';
 }
 
 /* hook that adds us as a ContentAction (tab) */
-function efACLHookContentTab(&$content_actions)
-{
+function efACLHookContentTab(&$content_actions) {
 	global $wgRequest, $wgTitle;
 
 	$action = $wgRequest->getText('action');
-	if ($wgTitle->getNamespace() != NS_SPECIAL)
-	{
+	if ($wgTitle->getNamespace() != NS_SPECIAL) {
 		$content_actions['acl'] = array(
 			'class' => $action == 'acl' ? 'selected' : false,
 			'text' => wfMsg('acl'),
@@ -32,6 +35,12 @@ function efACLHookContentTab(&$content_actions)
 		);
 	}
 
+	return true;
+}
+
+/* hook that adds us as a link */
+function efACLHookNavigationTab(&$sktemplate, &$links) {
+	efACLHookContentTab($links['views']);
 	return true;
 }
 
