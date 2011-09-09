@@ -101,7 +101,7 @@ function efACLParserSetup() {
 /* hook to be called when $wgParser is set up
  * also disables the cache
  */
-function efACLParserHook($input, $args, &$parser) {
+function efACLParserHook($input, $args, $parser) {
 	$parser->disableCache();
 	// do stuff
 }
@@ -267,12 +267,12 @@ function efACLExtractACL($title) {
 			$acl_string .= $match[1] . $wgACLDelimiter;
 		}
 		/* process each entry */
-		foreach (split($wgACLDelimiter, $acl_string) as $entry) {
+		foreach (preg_split("/$wgACLDelimiter/", $acl_string) as $entry) {
 			if (!empty($entry)) {
 				/* split this acl string entry to $entity and $bits */
 				if (strpos(trim($entry), $wgACLEntityBitDelimiter)) {
-					$entry = eregi_replace("$wgACLEntityBitDelimiter+", "$wgACLEntityBitDelimiter", $entry);
-					list($entity, $bitstring) = split($wgACLEntityBitDelimiter, trim($entry));
+					$entry = preg_replace("/$wgACLEntityBitDelimiter+/", "$wgACLEntityBitDelimiter", $entry);
+					list($entity, $bitstring) = preg_split("/$wgACLEntityBitDelimiter/", trim($entry));
 				} else {
 					/* if no bits were supplied */
 					$entity = $entry;
