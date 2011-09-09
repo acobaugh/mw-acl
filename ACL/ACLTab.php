@@ -45,7 +45,7 @@ function efACLHookNavigationTab(&$sktemplate, &$links) {
 }
 
 /* display the tab */
-function efACLDisplayTab($action, &$wgArticle)
+function efACLDisplayTab($action, $wgArticle)
 {
 	global $wgOut, $wgUser, $wgACLNames, $wgACLNamespaceACLPage;
 
@@ -110,6 +110,7 @@ function efACLDisplayTab($action, &$wgArticle)
 		}
 		
 		$wgOut->addWikiText($text);
+
 	}
 
 	return false;
